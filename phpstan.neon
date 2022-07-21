@@ -1,0 +1,8 @@
+# phpstan.neon
+parameters:
+    level: 6
+    paths:
+        - src
+        - tests
+    ignoreErrors:
+        - '#Class SimpleMVC\\Response\\HaltResponse extends \@final class Nyholm\\Psr7\\Response#'

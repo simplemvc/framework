@@ -1,0 +1,5 @@
+vendor/
+.phpunit.result.cache
+clover.xml
+.vscode/
+composer.lock
