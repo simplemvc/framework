@@ -16,7 +16,7 @@ use SimpleMVC\Response\HaltResponse;
 
 class HaltResponseTest extends TestCase
 {
-    public function testHaltIsPsr7Response()
+    public function testHaltIsPsr7Response(): void
     {
         $halt = new HaltResponse();
         $this->assertInstanceOf(ResponseInterface::class, $halt);
