@@ -1,6 +1,6 @@
 ## SimpleMVC
 
-[![Build status](https://github.com/simplemvc/framework/workflows/PHP%20test/badge.svg)](https://github.com/ezimuel/SimpleMVC/actions)
+[![Build status](https://github.com/simplemvc/framework/workflows/PHP%20test/badge.svg)](https://github.com/simplemvc/framework/actions)
 
 **SimpleMVC** is an MVC framework for PHP based on the [KISS](https://en.wikipedia.org/wiki/KISS_principle) principle:
 > "Keep It Simple, Stupid"
@@ -25,7 +25,7 @@ an Italian tertiary educational institution specialized in Information and Commu
 
 You can start using the framework with the [skeleton](https://github.com/simplemvc/skeleton) application.
 
-### Copyright
+## Copyright
 
 The author of this software is [Enrico Zimuel](https://github.com/ezimuel/) and other [contributors](https://github.com/simplemvc/framework/graphs/contributors).
 
