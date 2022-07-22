@@ -23,8 +23,9 @@ an Italian tertiary educational institution specialized in Information and Commu
 
 ## Introduction
 
-SimpleMVC implements the [Model–View–Controller](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller) (MVC) architectural pattern
-using dependency injection and [PSR](https://www.php-fig.org/psr/) standards.
+SimpleMVC implements the [Model–View–Controller](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller) (MVC)
+architectural pattern using [Dependency injection](https://en.wikipedia.org/wiki/Dependency_injection)
+and [PSR](https://www.php-fig.org/psr/) standards.
 
 A SimpleMVC application looks as follows:
 
