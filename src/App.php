@@ -31,7 +31,6 @@ use function FastRoute\cachedDispatcher;
 class App
 {
     const VERSION = '0.1';
-    const ROUTE_CACHE_FILE = '/data/route.cache';
 
     private Dispatcher $dispatcher;
     private ServerRequestInterface $request;
@@ -64,7 +63,7 @@ class App
                 $r->addRoute($route[0], $route[1], $route[2]);
             }
         }, [
-            'cacheFile'     => $config['routing']['cache'] ?? getcwd() . static::ROUTE_CACHE_FILE,
+            'cacheFile'     => $config['routing']['cache'] ?? '',
             'cacheDisabled' => !isset($config['routing']['cache'])
         ]);
 
