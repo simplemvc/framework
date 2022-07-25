@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace SimpleMVC\Test;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\RequestInterface;
@@ -20,12 +21,13 @@ use SimpleMVC\Controller\Error404;
 use SimpleMVC\Exception\InvalidConfigException;
 
 class AppTest extends TestCase
-{
-    private ContainerInterface $container;
-    
+{   
+    /** @var ContainerInterface|MockObject */
+    private $container;
+
     private App $app;
 
-    /** @var mixed */
+    /** @var mixed[] */
     private array $config;
 
     public function setUp(): void
