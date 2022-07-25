@@ -10,8 +10,8 @@ declare(strict_types=1);
 
 namespace SimpleMVC\Controller;
 
-use DI\NotFoundException;
 use Psr\Container\ContainerInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use SimpleMVC\Exception\InvalidConfigException;
@@ -36,7 +36,7 @@ class BasicAuth implements ControllerInterface
     {
         try {
             $auth = $container->get('authentication');
-        } catch (NotFoundException $e) {
+        } catch (NotFoundExceptionInterface $e) {
             throw new InvalidConfigException(
                 'The [authentication] key is missing in config/app.php'
             );
