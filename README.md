@@ -18,8 +18,12 @@ SimpleMVC uses the following PSR standards, from the [PHP-FIG](https://www.php-f
 - [PSR-7](https://www.php-fig.org/psr/psr-7/) for HTTP message;
 - [PSR-3](https://www.php-fig.org/psr/psr-3/) for logging;
 
-This project is used in the course **PHP Programming** by [Enrico Zimuel](https://www.zimuel.it/) at [ITS ICT Piemonte](http://www.its-ictpiemonte.it/),
-an Italian tertiary educational institution specialized in Information and Communications Technology in [Turin](https://en.wikipedia.org/wiki/Turin).
+This project was born as educational library for the course **PHP Programming** by [Enrico Zimuel](https://www.zimuel.it/)
+at [ITS ICT Piemonte](http://www.its-ictpiemonte.it/) in Italy.
+
+Since than, the project has been evoluted and it has been used also for building web application
+in production. We decided to create a more general purpose project and this was the beginning
+of this repository.
 
 ## Introduction
 
@@ -35,6 +39,7 @@ require 'vendor/autoload.php';
 
 use DI\ContainerBuilder;
 use SimpleMVC\App;
+use SimpleMVC\Emitter\SapiEmitter;
 
 $builder = new ContainerBuilder();
 $builder->addDefinitions('config/container.php');
@@ -42,14 +47,18 @@ $container = $builder->build();
 
 $app = new App($container, require 'config/app.php');
 $app->bootstrap();
-$app->dispatch();
+$response = $app->dispatch(); // PSR-7 response
+
+SapiEmitter::emit($response);
 ```
 
-We build a DI container using [PHP-DI](https://php-di.org/) and we create a `SimpleMVC\App` object.
+We use a DI container with [PHP-DI](https://php-di.org/) and we create a `SimpleMVC\App` object.
 We use an array to configure the `App` object, that is specified using `require 'config/app.php'` in the example.
-Then we `bootstrap()` the application and we `dispatch()` the request, that's it!
+Then we `bootstrap()` the application and we `dispatch()` the request.
+The PSR-7 response is stored in a `$response` variable that can be rendered using a `SimpleMVC\Emitter\EmitterIntarfce`.
+In this example we used a `SapiEmitter` to render the PSR-7 response in the standard output.
 
-This example can act as a front controller of an MVC application (see diagram below).
+This example acts as a front controller of an MVC application (see diagram below).
 
 ![MVC diagram](doc/mvc.png)
 

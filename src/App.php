@@ -16,13 +16,12 @@ use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7Server\ServerRequestCreator;
 use Psr\Container\ContainerInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use SimpleMVC\Controller\Error404;
 use SimpleMVC\Controller\Error405;
-use SimpleMVC\Emitter\EmitterInterface;
-use SimpleMVC\Emitter\SapiEmitter;
 use SimpleMVC\Exception\ControllerException;
 use SimpleMVC\Exception\InvalidConfigException;
 use SimpleMVC\Response\HaltResponse;
@@ -46,11 +45,6 @@ class App
     private $config;
 
     /**
-     * @var string the emitter class name
-     */
-    private $emitter;
-
-    /**
      * @param mixed[] $config
      */
     public function __construct(ContainerInterface $container, array $config)
@@ -61,7 +55,9 @@ class App
 
         // Routing initialization
         if (!isset($config['routing']['routes'])) {
-            throw new InvalidConfigException('You need to specify a [\'routing\'][\'routes\'] value in configuration');
+            throw new InvalidConfigException(
+                'You need to provide a [\'routing\'][\'routes\'] value in configuration'
+            );
         }
         $this->dispatcher = cachedDispatcher(function(RouteCollector $r) use ($config) {
             foreach ($config['routing']['routes'] as $route) {
@@ -80,20 +76,6 @@ class App
             ));
         }
         $this->logger = $config['logger'] ?? new NullLogger();
-
-        // Emitter
-        if (isset($config['emitter'])) {
-            $classImplements = class_implements($config['emitter']);
-            if (false === $classImplements || !in_array(EmitterInterface::class, $classImplements)) {
-                throw new InvalidConfigException(sprintf(
-                    "The emitter specified do not implements %s'",
-                    EmitterInterface::class
-                ));
-            }
-            $this->emitter = $config['emitter'];
-        } else {
-            $this->emitter = SapiEmitter::class;
-        }
 
         $f = new Psr17Factory();
         $this->request = (new ServerRequestCreator($f, $f, $f, $f))->fromGlobals();
@@ -142,7 +124,7 @@ class App
         }
     }
 
-    public function dispatch(): void
+    public function dispatch(): ResponseInterface
     {
         $routeInfo = $this->dispatcher->dispatch(
             $this->request->getMethod(), 
@@ -173,6 +155,12 @@ class App
         if (is_string($controllerName)) {
             $this->logger->info(sprintf("Executing %s", $controllerName));
             $controller = $this->container->get($controllerName);
+            if (empty($controller)) {
+                throw new ControllerException(sprintf(
+                    'The controller name %s cannot be retrieved from the container',
+                    $controllerName
+                ));
+            }
             $response = $controller->execute($this->request, $response);    
         } elseif (is_array($controllerName)) {
             foreach ($controllerName as $controller) {
@@ -191,9 +179,10 @@ class App
                 var_export($controllerName, true)
             ));
         }
-        echo $this->emitter::emit($response);
         
         $this->logger->info(sprintf("Execution time: %.3f sec", microtime(true) - $this->startTime));
         $this->logger->info(sprintf("Memory usage: %d bytes", memory_get_usage(true)));
+
+        return $response;
     }
 }

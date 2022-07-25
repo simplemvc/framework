@@ -15,7 +15,7 @@ use SimpleMVC\App;
 
 class SapiEmitter implements EmitterInterface
 {
-    public static function emit(ResponseInterface $response): string
+    public static function emit(ResponseInterface $response): void
     {
         // status code line
         $statusCode = $response->getStatusCode();
@@ -43,6 +43,6 @@ class SapiEmitter implements EmitterInterface
         if (!empty($body)) {
             header(sprintf("Content-Length: %d", strlen($body)));
         }
-        return $body;
+        echo $body;
     }
 }
