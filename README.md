@@ -47,21 +47,42 @@ $builder = new ContainerBuilder();
 $builder->addDefinitions('config/container.php');
 $container = $builder->build();
 
-$app = new App($container, require 'config/app.php');
-$app->bootstrap();
+$app = new App($container);
+$app->bootstrap(); // optional
 $response = $app->dispatch(); // PSR-7 response
 
 SapiEmitter::emit($response);
 ```
 
 In this example we use a DI container with [PHP-DI](https://php-di.org/). We create a `SimpleMVC\App` object
-using the previous container and a configuration array. Then we `bootstrap()` the application and we `dispatch()`
-the request. The PSR-7 response is stored in a `$response` variable that can be rendered using a
-`SimpleMVC\Emitter\EmitterIntarfce`.
+using the previous container. 
 
+The application can be configured using the `config/container.php` file. An example is as follows:
+
+```php
+// config/container.php
+use App\Controller;
+
+return [
+    'config' => [
+        'routing' => [
+            'routes' => [
+                [ 'GET', '/', Controller\HomePage::class ]
+            ]
+        ]
+    ]
+];
+```
+
+The steps to manage the request are:
+
+- `bootstrap()` (optional), here you can specify any bootstrap requirements;
+- `dispatch()`, where the HTTP request is dispatched, executing the controller specified in the route.
+
+The `dispatch()` returns a PSR-7 response. Finally, we can render the response using an emitter.
 In this example we used a `SapiEmitter` to render the PSR-7 response in the standard output.
 
-This example acts as a front controller of an MVC application (see diagram below).
+The previous PHP script is basically a front controller of an MVC application (see diagram below).
 
 ![MVC diagram](doc/mvc.png)
 
