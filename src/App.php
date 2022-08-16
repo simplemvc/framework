@@ -41,6 +41,9 @@ class App
     /** @var mixed[] */
     private array $config;
 
+    /**
+     * @throws InvalidConfigException
+     */
     public function __construct(ContainerInterface $container)
     {
         $this->startTime = microtime(true);
@@ -50,7 +53,7 @@ class App
             $this->config = $container->get('config');
         } catch (NotFoundExceptionInterface $e) {
             throw new InvalidConfigException(
-                'The configuation is missing! Be sure to have a "config" key in the container'
+                'The configuration is missing! Be sure to have a "config" key in the container'
             );
         }
         if (!isset($this->config['routing']['routes'])) {
@@ -80,9 +83,9 @@ class App
             throw new InvalidConfigException('The ["bootstrap"] must a callable');
         }
 
-        // Build the PSR-7 request
-        $f = new Psr17Factory();
-        $this->request = (new ServerRequestCreator($f, $f, $f, $f))->fromGlobals();
+        $factory = new Psr17Factory();
+        $this->request = (new ServerRequestCreator($factory, $factory, $factory, $factory))
+            ->fromGlobals();
         
         $this->logger->info(sprintf(
             "Request: %s %s", 
@@ -131,6 +134,9 @@ class App
         }
     }
 
+    /**
+     * @throws ControllerException
+     */
     public function dispatch(): ResponseInterface
     {
         $routeInfo = $this->dispatcher->dispatch(
@@ -159,40 +165,23 @@ class App
         // default HTTP response
         $response = new Response(200);
 
-        if (is_string($controllerName)) {
-            $this->logger->info(sprintf("Executing %s", $controllerName));
+        $controllerName = is_array($controllerName) ?: [$controllerName];
+        foreach ($controllerName as $controller) {
+            $this->logger->info(sprintf("Executing %s", $controller));
             try {
-                $controller = $this->container->get($controllerName);
-                $response = $controller->execute($this->request, $response);  
+                $response = $this->container
+                    ->get($controller)
+                    ->execute($this->request, $response);
+                if ($response instanceof HaltResponse) {
+                    $this->logger->info(sprintf("Found HaltResponse in %s", $controller));
+                    break;
+                }
             } catch (NotFoundExceptionInterface $e) {
                 throw new ControllerException(sprintf(
                     'The controller name %s cannot be retrieved from the container',
-                    $controllerName
+                    $controller
                 ));
-            }  
-        } elseif (is_array($controllerName)) {
-            foreach ($controllerName as $controller) {
-                $this->logger->info(sprintf("Executing %s", $controller));
-                try {
-                    $response = $this->container
-                        ->get($controller)
-                        ->execute($this->request, $response);
-                    if ($response instanceof HaltResponse) {
-                        $this->logger->info(sprintf("Found HaltResponse in %s", $controller));
-                        break;
-                    }
-                } catch (NotFoundExceptionInterface $e) {
-                    throw new ControllerException(sprintf(
-                        'The controller name %s cannot be retrieved from the container',
-                        $controller
-                    ));
-                }    
-            }
-        } else {
-            throw new ControllerException(sprintf(
-                'The controller name %s must be a string or array',
-                var_export($controllerName, true)
-            ));
+            }    
         }
         
         $this->logger->info(sprintf("Execution time: %.3f sec", microtime(true) - $this->startTime));
