@@ -19,14 +19,12 @@ use SimpleMVC\Controller\Error405;
 
 final class Error405Test extends TestCase
 {
-    /** @var ControllerInterface */
-    private $error;
+    private ControllerInterface $error;
     
     /** @var ServerRequestInterface&MockObject */
     private $request;
     
-    /** @var ResponseInterface */
-    private $response;
+    private ResponseInterface $response;
 
     public function setUp(): void
     {

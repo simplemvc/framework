@@ -19,14 +19,12 @@ use SimpleMVC\Controller\Error404;
 
 final class Error404Test extends TestCase
 {
-    /** @var ControllerInterface */
-    private $error;
+    private ControllerInterface $error;
     
     /** @var ServerRequestInterface&MockObject */
     private $request;
 
-    /** @var ResponseInterface */
-    private $response;
+    private ResponseInterface $response;
 
     public function setUp(): void
     {
