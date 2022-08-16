@@ -38,6 +38,7 @@ class App
     private ContainerInterface $container;
     private LoggerInterface $logger;
     private float $startTime;
+    
     /** @var mixed[] */
     private array $config;
 
@@ -130,7 +131,7 @@ class App
         if (isset($this->config['bootstrap'])) {
             $start = microtime(true);
             $this->config['bootstrap']($this->container);
-            $this->logger->info(sprintf("Bootstrap execution: %.3f sec", microtime(true) - $start));
+            $this->logger->debug(sprintf("Bootstrap execution: %.3f sec", microtime(true) - $start));
         }
     }
 
@@ -167,13 +168,13 @@ class App
 
         $controllerName = is_array($controllerName) ?: [$controllerName];
         foreach ($controllerName as $controller) {
-            $this->logger->info(sprintf("Executing %s", $controller));
+            $this->logger->debug(sprintf("Executing %s", $controller));
             try {
                 $response = $this->container
                     ->get($controller)
                     ->execute($this->request, $response);
                 if ($response instanceof HaltResponse) {
-                    $this->logger->info(sprintf("Found HaltResponse in %s", $controller));
+                    $this->logger->debug(sprintf("Found HaltResponse in %s", $controller));
                     break;
                 }
             } catch (NotFoundExceptionInterface $e) {
