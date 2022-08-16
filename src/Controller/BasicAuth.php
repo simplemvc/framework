@@ -11,7 +11,6 @@ declare(strict_types=1);
 namespace SimpleMVC\Controller;
 
 use Psr\Container\ContainerInterface;
-use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use SimpleMVC\Exception\InvalidConfigException;
@@ -32,22 +31,24 @@ class BasicAuth implements ControllerInterface
      */
     protected $realm;
 
+    /**
+     * @throws InvalidConfigException
+     */
     public function __construct(ContainerInterface $container)
     {
-        try {
-            $auth = $container->get('authentication');
-        } catch (NotFoundExceptionInterface $e) {
+        $config = $container->get('config');
+        if (!isset($config['authentication'])) {
             throw new InvalidConfigException(
-                'The [authentication] key is missing in config/app.php'
+                'The ["config"]["authentication"] is missing in configuration'
             );
         }
-        $this->username = $auth['username'] ?? null;
-        $this->password = $auth['password'] ?? null;
-        $this->realm    = $auth['realm'] ?? '';
+        $this->username = $config['authentication']['username'] ?? null;
+        $this->password = $config['authentication']['password'] ?? null;
+        $this->realm    = $config['authentication']['realm'] ?? '';
 
         if (is_null($this->username) || is_null($this->password)) {
             throw new InvalidConfigException(
-                'The [authentication][username] and [authentication][password] are missing in config/app.php'
+                'Username and password are missing in ["config"]["authentication"]'
             );
         }
     }

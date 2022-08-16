@@ -24,27 +24,27 @@ final class BasicAuthTest extends TestCase
     /** @var ContainerInterface&MockObject */
     private $container;
 
-    /** @var ControllerInterface */
-    private $auth;
+    private ControllerInterface $auth;
     
     /** @var ServerRequestInterface&MockObject */
     private $request;
 
-    /** @var ResponseInterface */
-    private $response;
+    private ResponseInterface $response;
 
-    /** @var string[] */
+    /** @var mixed[] */
     private $config;
 
     public function setUp(): void
     {
         $this->config = [
-            'username' => 'test',
-            'password' => 'password'
+            'authentication' => [
+                'username' => 'test',
+                'password' => 'password'
+            ]
         ];
         $this->container = $this->createMock(ContainerInterface::class);
         $this->container->method('get')
-            ->with($this->equalTo('authentication'))
+            ->with($this->equalTo('config'))
             ->willReturn($this->config);
 
         $this->auth = new BasicAuth($this->container);
@@ -58,7 +58,7 @@ final class BasicAuthTest extends TestCase
             ->with($this->equalTo('Authorization'))
             ->willReturn([sprintf(
                 'Basic %s',
-                base64_encode($this->config['username'] . ':' . $this->config['password'])
+                base64_encode($this->config['authentication']['username'] . ':' . $this->config['authentication']['password'])
             )]);
 
         $response = $this->auth->execute($this->request, $this->response);
