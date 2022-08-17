@@ -31,7 +31,7 @@ use function FastRoute\cachedDispatcher;
 
 class App
 {
-    const VERSION = '0.1.1';
+    const VERSION = '0.2.0';
 
     private Dispatcher $dispatcher;
     private ServerRequestInterface $request;
