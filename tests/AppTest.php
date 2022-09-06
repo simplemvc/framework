@@ -12,22 +12,28 @@ namespace SimpleMVC\Test;
 
 use Exception;
 use FastRoute\Dispatcher;
-use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\MockObject\Rule\AnyInvokedCount;
+use Mockery;
+use Mockery\LegacyMockInterface;
+use Mockery\MockInterface;
+use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use SimpleMVC\App;
+use SimpleMVC\Controller\BasicAuth;
 use SimpleMVC\Controller\Error404;
 use SimpleMVC\Exception\InvalidConfigException;
+use SimpleMVC\Response\HaltResponse;
+use SimpleMVC\Test\Asset\TestAttributeController;
+use SimpleMVC\Test\Asset\TestController;
 
 class AppTest extends TestCase
 {   
-    /** @var ContainerInterface|MockObject */
+    /** @var ContainerInterface|MockInterface|LegacyMockInterface */
     private $container;
 
     private string $tmpCacheFile;
@@ -35,8 +41,8 @@ class AppTest extends TestCase
     /** @var mixed[] */
     private array $config;
 
-    private AnyInvokedCount $matcher;
-
+    private ServerRequestInterface $request;
+    
     public function setUp(): void
     {
         $this->tmpCacheFile = sys_get_temp_dir() . '/cache.route';
@@ -45,22 +51,28 @@ class AppTest extends TestCase
                 'routes' => []
             ]
         ];
-        $this->container = $this->createMock(ContainerInterface::class);
-        $this->matcher = $this->any();
-        $this->container
-            ->expects($this->matcher)
-            ->method('get')
-            ->withConsecutive(['config'], [LoggerInterface::class])
-            ->willReturnCallback(function() {
-                switch($this->matcher->getInvocationCount()) {
-                    case 1:
-                        return $this->config;
-                    case 2:
-                        throw new class extends Exception implements NotFoundExceptionInterface {};
-                    case 3:
-                        return new Error404();
-                }
-            });
+        $this->container = Mockery::mock(ContainerInterface::class);
+        $this->container->shouldReceive('get')
+            ->with('config')
+            ->andReturn($this->config)
+            ->byDefault();
+
+        $this->container->shouldReceive('get')
+            ->with(LoggerInterface::class)
+            ->andThrow(new class extends Exception implements NotFoundExceptionInterface {})
+            ->byDefault();
+
+        $this->container->shouldReceive('get')
+            ->with(Error404::class)
+            ->andReturn(new Error404)
+            ->byDefault();
+
+        $this->container->shouldReceive('get')
+            ->with(TestController::class)
+            ->andReturn(new TestController)
+            ->byDefault();
+
+        $this->request = new ServerRequest('GET', '/');
     }
 
     public function tearDown(): void
@@ -92,19 +104,11 @@ class AppTest extends TestCase
     public function testUseCustomLogger(): void
     {
         $customLogger = new class extends NullLogger {};
-        $container = $this->createMock(ContainerInterface::class);
-        $container->expects($this->matcher)
-            ->method('get')
-            ->withConsecutive(['config'], [LoggerInterface::class])
-            ->willReturnCallback(function() use ($customLogger) {
-                switch($this->matcher->getInvocationCount()) {
-                    case 1:
-                        return $this->config;
-                    case 2:
-                        return $customLogger;
-                }
-        });
-        $app = new App($container);
+        $this->container->shouldReceive('get')
+            ->with(LoggerInterface::class)
+            ->andReturn($customLogger);
+
+        $app = new App($this->container);
         $this->assertEquals($customLogger, $app->getLogger());
     }
 
@@ -123,14 +127,12 @@ class AppTest extends TestCase
     public function testEnableCacheForRouting(): void
     {
         $this->config['routing']['cache'] = $this->tmpCacheFile;
+        $this->container->shouldReceive('get')
+            ->with('config')
+            ->andReturn($this->config);
+
         $app = new App($this->container);
         $this->assertFileExists($this->tmpCacheFile);
-    }
-
-    public function testGetRequest(): void
-    {
-        $app = new App($this->container);
-        $this->assertInstanceOf(RequestInterface::class, $app->getRequest());
     }
 
     /**
@@ -147,6 +149,10 @@ class AppTest extends TestCase
         $this->config['bootstrap'] = function(ContainerInterface $c) {
             $this->assertInstanceOf(ContainerInterface::class, $c);
         };
+        $this->container->shouldReceive('get')
+            ->with('config')
+            ->andReturn($this->config);
+            
         $app = new App($this->container);
         $app->bootstrap();
     }
@@ -154,16 +160,122 @@ class AppTest extends TestCase
     public function testBootstrapWithNoCallable(): void
     {
         $this->config['bootstrap'] = 'test';
+        $this->container->shouldReceive('get')
+            ->with('config')
+            ->andReturn($this->config);
+
         $this->expectException(InvalidConfigException::class);
         $app = new App($this->container);
     }
 
-    public function testDispatch(): void
+    public function testDispatchWithoutRouteReturns404(): void
     {
         $app = new App($this->container);
-        $response = $app->dispatch();
+        $response = $app->dispatch($this->request);
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(404, $response->getStatusCode());            
+    }
+
+    public function testDispatchWithRouteAndControllerReturns200(): void
+    {
+        $this->config = [ 
+            'routing' => [
+                'routes' => [ 
+                    ['GET', '/', TestController::class] 
+                ]
+            ]
+        ];
+        $this->container->shouldReceive('get')
+            ->with('config')
+            ->andReturn($this->config);
+
+        $app = new App($this->container);
+        $response = $app->dispatch($this->request);
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());            
+    }
+
+    public function testDispatchControllerPipelineWithBasicAuthReturns401(): void
+    {
+        $this->config = [ 
+            'routing' => [
+                'routes' => [ 
+                    ['GET', '/', [BasicAuth::class, TestController::class]] 
+                ]
+                ],
+            'authentication' => [
+                'username' => 'test',
+                'password' => 'password'
+            ]
+        ];
+        $this->container->shouldReceive('get')
+            ->with('config')
+            ->andReturn($this->config);
+
+        $this->container->shouldReceive('get')
+            ->with(BasicAuth::class)
+            ->andReturn(new BasicAuth($this->container));
+
+        $app = new App($this->container);
+        $this->request = $this->request->withHeader('Authorization', sprintf("Basic %s", base64_encode('test:password')));
+        $response = $app->dispatch($this->request);
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+
+    public function testDispatchControllerPipelineWithBasicAuthReturns200(): void
+    {
+        $this->config = [ 
+            'routing' => [
+                'routes' => [ 
+                    ['GET', '/', [BasicAuth::class, TestController::class]] 
+                ]
+                ],
+            'authentication' => [
+                'username' => 'test',
+                'password' => 'password'
+            ]
+        ];
+        $this->container->shouldReceive('get')
+            ->with('config')
+            ->andReturn($this->config);
+
+        $this->container->shouldReceive('get')
+            ->with(BasicAuth::class)
+            ->andReturn(new BasicAuth($this->container));
+
+        $app = new App($this->container);
+        $response = $app->dispatch($this->request);
+        $this->assertInstanceOf(HaltResponse::class, $response);
+        $this->assertEquals(401, $response->getStatusCode());
+    }
+
+    public function testDispatchControllerPipelineWithAttribute(): void
+    {
+        $attributes = ['foo' => 'bar'];
+        $this->config = [ 
+            'routing' => [
+                'routes' => [ 
+                    ['GET', '/', [TestAttributeController::class, TestController::class]] 
+                ]
+            ]
+        ];
+        $this->container->shouldReceive('get')
+            ->with('config')
+            ->andReturn($this->config);
+
+        $this->container->shouldReceive('get')
+            ->with(TestAttributeController::class)
+            ->andReturn(new TestAttributeController($attributes));
+
+        $controller = new TestController();
+        $this->container->shouldReceive('get')
+            ->with(TestController::class)
+            ->andReturn($controller);
+
+        $app = new App($this->container);
+        $response = $app->dispatch($this->request);
+        $this->assertEquals($attributes, $controller->attributes);
     }
 }

@@ -20,7 +20,9 @@
     },
     "require-dev": {
         "phpstan/phpstan": "^1.8",
-        "phpunit/phpunit": "^9.5"
+        "phpunit/phpunit": "^9.5",
+        "mockery/mockery": "^1.5",
+        "phpstan/phpstan-mockery": "^1.1"
     },
     "autoload": {
         "psr-4": {
