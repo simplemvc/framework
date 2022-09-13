@@ -6,3 +6,4 @@ parameters:
         - tests
     ignoreErrors:
         - '#Class SimpleMVC\\Response\\HaltResponse extends \@final class Nyholm\\Psr7\\Response#'
+        - '#Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage::with\(\)#'

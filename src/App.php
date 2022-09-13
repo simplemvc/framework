@@ -21,6 +21,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use SimpleMVC\Controller\AttributeInterface;
 use SimpleMVC\Controller\Error404;
 use SimpleMVC\Controller\Error405;
 use SimpleMVC\Exception\ControllerException;
@@ -34,7 +35,6 @@ class App
     const VERSION = '0.2.0';
 
     private Dispatcher $dispatcher;
-    private ServerRequestInterface $request;
     private ContainerInterface $container;
     private LoggerInterface $logger;
     private float $startTime;
@@ -83,24 +83,6 @@ class App
         if (isset($this->config['bootstrap']) && !is_callable($this->config['bootstrap'])) {
             throw new InvalidConfigException('The ["bootstrap"] must a callable');
         }
-
-        $factory = new Psr17Factory();
-        $this->request = (new ServerRequestCreator($factory, $factory, $factory, $factory))
-            ->fromGlobals();
-        
-        $this->logger->info(sprintf(
-            "Request: %s %s", 
-            $this->request->getMethod(), 
-            $this->request->getUri()->getPath()
-        ));
-    }
-
-    /**
-     * Returns the PSR-7 request
-     */
-    public function getRequest(): ServerRequestInterface
-    {
-        return $this->request;
     }
 
     public function getContainer(): ContainerInterface
@@ -138,11 +120,17 @@ class App
     /**
      * @throws ControllerException
      */
-    public function dispatch(): ResponseInterface
+    public function dispatch(ServerRequestInterface $request): ResponseInterface
     {
+        $this->logger->info(sprintf(
+            "Request: %s %s", 
+            $request->getMethod(), 
+            $request->getUri()->getPath()
+        ));
+
         $routeInfo = $this->dispatcher->dispatch(
-            $this->request->getMethod(), 
-            $this->request->getUri()->getPath()
+            $request->getMethod(), 
+            $request->getUri()->getPath()
         );
         $controllerName = null;
         switch ($routeInfo[0]) {
@@ -158,7 +146,7 @@ class App
                 $controllerName = $routeInfo[1];
                 if (isset($routeInfo[2])) {
                     foreach ($routeInfo[2] as $name => $value) {
-                        $this->request = $this->request->withAttribute($name, $value);
+                        $request = $request->withAttribute($name, $value);
                     }
                 }
                 break;
@@ -166,28 +154,50 @@ class App
         // default HTTP response
         $response = new Response(200);
 
-        $controllerName = is_array($controllerName) ?: [$controllerName];
-        foreach ($controllerName as $controller) {
-            $this->logger->debug(sprintf("Executing %s", $controller));
+        if (!is_array($controllerName)) {
+            $controllerName = [$controllerName];
+        }
+        foreach ($controllerName as $name) {
+            $this->logger->debug(sprintf("Executing %s", $name));
             try {
-                $response = $this->container
-                    ->get($controller)
-                    ->execute($this->request, $response);
+                $controller = $this->container->get($name);
+                $response = $controller->execute($request, $response);
                 if ($response instanceof HaltResponse) {
-                    $this->logger->debug(sprintf("Found HaltResponse in %s", $controller));
+                    $this->logger->debug(sprintf("Found HaltResponse in %s", $name));
                     break;
+                }
+                // Add the PSR-7 attributes to the next request
+                if ($controller instanceof AttributeInterface) {
+                    foreach ($controller->getRequestAttribute() as $key => $value) {
+                        $request = $request->withAttribute($key, $value);
+                    }
                 }
             } catch (NotFoundExceptionInterface $e) {
                 throw new ControllerException(sprintf(
                     'The controller name %s cannot be retrieved from the container',
-                    $controller
+                    $name
                 ));
             }    
         }
-        
+
+        $this->logger->info(sprintf(
+            "Response: %d", 
+            $response->getStatusCode()
+        ));
+
         $this->logger->info(sprintf("Execution time: %.3f sec", microtime(true) - $this->startTime));
         $this->logger->info(sprintf("Memory usage: %d bytes", memory_get_usage(true)));
 
         return $response;
+    }
+
+    /**
+     * Returns a PSR-7 request from globals ($_GET, $_POST, $_SERVER, etc)
+     */
+    public static function buildRequestFromGlobals(): ServerRequestInterface
+    {
+        $factory = new Psr17Factory();
+        return (new ServerRequestCreator($factory, $factory, $factory, $factory))
+            ->fromGlobals();
     }
 }
