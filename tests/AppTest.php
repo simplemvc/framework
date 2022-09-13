@@ -278,4 +278,9 @@ class AppTest extends TestCase
         $response = $app->dispatch($this->request);
         $this->assertEquals($attributes, $controller->attributes);
     }
+
+    public function testBuildRequestFromGlobals(): void
+    {
+        $this->assertInstanceOf(ServerRequestInterface::class, App::buildRequestFromGlobals());
+    }
 }

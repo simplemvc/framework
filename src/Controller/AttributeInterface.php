@@ -20,7 +20,7 @@ interface AttributeInterface
     public function addRequestAttribute(string $name, $value): void;
 
     /**
-     * Get a request attribute, if $name is not specified returns
+     * Get a request attribute, if $name is not specified return
      * all the attributes as array
      * 
      * @return mixed
