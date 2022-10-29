@@ -125,7 +125,7 @@ If the authentication is not success, the `BasicAuth` emits an `HaltResponse` th
 will stop the pipeline execution. `HaltResponse` is a special PSR-7 that informs
 the SimpleMVC framework to halt the execution.
 
-## Passing attributes bewtween controllers
+## Passing attributes between controllers
 
 If you need to pass an attribute (parameter) from a controller to another in a
 pipeline of execution you can use the `AttributeInterface`. For instance, imagine
