@@ -1,4 +1,5 @@
 <?php
+
 /**
  * SimpleMVC
  *
@@ -38,7 +39,7 @@ class App
     private ContainerInterface $container;
     private LoggerInterface $logger;
     private float $startTime;
-    
+
     /** @var mixed[] */
     private array $config;
 
@@ -48,7 +49,7 @@ class App
     public function __construct(ContainerInterface $container)
     {
         $this->startTime = microtime(true);
-        $this->container = $container;    
+        $this->container = $container;
 
         try {
             $this->config = $container->get('config');
@@ -64,14 +65,14 @@ class App
         }
         $routes = $this->config['routing']['routes'];
         // Routing initialization
-        $this->dispatcher = cachedDispatcher(function(RouteCollector $r) use ($routes) {
+        $this->dispatcher = cachedDispatcher(function (RouteCollector $r) use ($routes) {
             foreach ($routes as $route) {
                 $r->addRoute($route[0], $route[1], $route[2]);
             }
         }, [
-            'cacheFile'     => $this->config['routing']['cache'] ?? '',
-            'cacheDisabled' => !isset($this->config['routing']['cache'])
-        ]);
+               'cacheFile' => $this->config['routing']['cache'] ?? '',
+               'cacheDisabled' => !isset($this->config['routing']['cache'])
+           ]);
 
         // Logger initialization
         try {
@@ -94,7 +95,7 @@ class App
     {
         return $this->dispatcher;
     }
-    
+
     /**
      * @return mixed[]
      */
@@ -122,16 +123,19 @@ class App
      */
     public function dispatch(ServerRequestInterface $request): ResponseInterface
     {
-        $this->logger->info(sprintf(
-            "Request: %s %s", 
-            $request->getMethod(), 
-            $request->getUri()->getPath()
-        ));
+        $this->logger->info(
+            sprintf(
+                "Request: %s %s",
+                $request->getMethod(),
+                $request->getUri()->getPath()
+            )
+        );
 
         $routeInfo = $this->dispatcher->dispatch(
-            $request->getMethod(), 
+            $request->getMethod(),
             $request->getUri()->getPath()
         );
+
         $controllerName = null;
         switch ($routeInfo[0]) {
             case Dispatcher::NOT_FOUND:
@@ -173,17 +177,25 @@ class App
                     }
                 }
             } catch (NotFoundExceptionInterface $e) {
-                throw new ControllerException(sprintf(
-                    'The controller name %s cannot be retrieved from the container',
-                    $name
-                ));
-            }    
+                throw new ControllerException(
+                    sprintf(
+                        'Cannot get controller from container for route [ %s %s ]: %s',
+                        $request->getMethod(),
+                        $request->getUri()->getPath(),
+                        $e->getMessage()
+                    ),
+                    0,
+                    $e
+                );
+            }
         }
 
-        $this->logger->info(sprintf(
-            "Response: %d", 
-            $response->getStatusCode()
-        ));
+        $this->logger->info(
+            sprintf(
+                "Response: %d",
+                $response->getStatusCode()
+            )
+        );
 
         $this->logger->info(sprintf("Execution time: %.3f sec", microtime(true) - $this->startTime));
         $this->logger->info(sprintf("Memory usage: %d bytes", memory_get_usage(true)));
